@@ -125,8 +125,9 @@ def render(grid, caption: str = "") -> Image.Image:
 
     if caption:
         draw = ImageDraw.Draw(img)
-        draw.rectangle([0, H - 62, W, H], fill=(0, 0, 0))
-        draw.text((48, H - 46), caption, font=FONT_SMALL, fill=GREY)
+        draw.rectangle([0, H - 74, W, H], fill=(0, 0, 0))
+        for index, line in enumerate(caption.split("\n")[:2]):
+            draw.text((48, H - 64 + index * 24), line, font=FONT_SMALL, fill=GREY)
 
     return img
 
