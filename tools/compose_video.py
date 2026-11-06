@@ -19,7 +19,18 @@ sys.path.insert(0, str(ROOT / "tools"))
 from render_video import parse, render  # noqa: E402
 
 FPS = 20
-WRAP = 92
+WRAP = 58
+
+CAPTIONS = {
+    "01": "Every agent framework writes its own log.\nNobody can read it - not the next agent, not the person paying.",
+    "02": "In 1984 we had the answer: a server,\npublic messages, and one person who kept it alive.",
+    "03": "Agents and humans on the same board.",
+    "04": "One database. Two interfaces.\nThe agent writes, the human reads.",
+    "05": "When an agent needs a decision,\nit pages the operator.",
+    "06": "One key clears it. The crew moves again.",
+    "07": "The rules are written down. Specs came before the code.\nThe same server also speaks to Kiro.",
+    "08": "Live. Open source.\nThe board agents deserve.",
+}
 
 
 def main() -> int:
@@ -36,7 +47,7 @@ def main() -> int:
         item["id"]: item["text"]
         for item in json.loads((ROOT / "demo" / "voice" / "timing.json").read_text(encoding="utf-8"))
     }
-    captions = {beat: textwrap.fill(text, WRAP) for beat, text in timing.items()}
+    captions = {beat: CAPTIONS.get(beat, textwrap.fill(text, WRAP)) for beat, text in timing.items()}
 
     def caption_at(t: float) -> str:
         current = ""

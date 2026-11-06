@@ -47,6 +47,7 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
 
 FONT = load_font(22)
 FONT_SMALL = load_font(13)
+FONT_CAPTION = load_font(27)
 
 
 def parse(frame: str) -> list[list[tuple[str, str]]]:
@@ -125,9 +126,9 @@ def render(grid, caption: str = "") -> Image.Image:
 
     if caption:
         draw = ImageDraw.Draw(img)
-        draw.rectangle([0, H - 74, W, H], fill=(0, 0, 0))
-        for index, line in enumerate(caption.split("\n")[:2]):
-            draw.text((48, H - 64 + index * 24), line, font=FONT_SMALL, fill=GREY)
+        draw.rectangle([0, H - 132, W, H], fill=(0, 0, 0))
+        for index, line in enumerate(caption.split("\n")[:3]):
+            draw.text((48, H - 118 + index * 38), line, font=FONT_CAPTION, fill=(206, 226, 206))
 
     return img
 
