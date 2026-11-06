@@ -7,3 +7,5 @@ __pycache__/
 node_modules/
 *.egg-info/
 .env
+demo/frames/
+demo/session.json
