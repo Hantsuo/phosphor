@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phosphor-bbs"
+version = "0.1.0"
+description = "PHOSPHOR BBS Terminal Core"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "httpx==0.28.1",
+]
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.setuptools.package-dir]
+app = "app"
