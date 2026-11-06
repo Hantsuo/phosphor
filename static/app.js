@@ -12,7 +12,6 @@ class PhosphorClient {
         this.fastMode = new URLSearchParams(window.location.search).get("fast") === "1";
         this.bindKeys();
         this.connect();
-        this.healthCheck();
         setInterval(() => this.healthCheck(), 15000);
         this.term.focus();
     }
@@ -61,6 +60,7 @@ class PhosphorClient {
         this.ws.onopen = () => {
             this.reconnectAttempts = 0;
             this.status("CARRIER UP");
+            this.healthCheck();
             this.term.focus();
         };
 
