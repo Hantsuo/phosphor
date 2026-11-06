@@ -70,7 +70,7 @@ def synth(text: str, out: Path, ref: Path) -> None:
         "temperature": 1,
         "text_split_method": "cut5",
         "batch_size": 1,
-        "speed_factor": 0.94,
+        "speed_factor": 1.12,
         "media_type": "wav",
         "streaming_mode": False,
         "seed": 1234,
@@ -92,6 +92,29 @@ def duration(path: Path) -> float:
         return handle.getnframes() / float(handle.getframerate())
 
 
+def trim(path: Path, threshold: float = 0.012, margin: float = 0.12) -> None:
+    """Cut leading and trailing silence so the cut does not sag between beats."""
+    import numpy as np
+
+    with wave.open(str(path), "rb") as handle:
+        rate = handle.getframerate()
+        data = np.frombuffer(handle.readframes(handle.getnframes()), np.int16)
+    if data.size == 0:
+        return
+    loud = np.where(np.abs(data) > threshold * 32767)[0]
+    if loud.size == 0:
+        return
+    pad = int(margin * rate)
+    start = max(0, loud[0] - pad)
+    end = min(data.size, loud[-1] + pad)
+    kept = data[start:end]
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(rate)
+        handle.writeframes(kept.tobytes())
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default="demo/voice")
@@ -111,6 +134,7 @@ def main() -> int:
     for name, text in SEGMENTS:
         path = out_dir / f"{name}.wav"
         synth(text, path, ref)
+        trim(path)
         seconds = duration(path)
         timing.append({"id": name, "text": text, "seconds": round(seconds, 2)})
         print(name, f"{seconds:.2f}s")

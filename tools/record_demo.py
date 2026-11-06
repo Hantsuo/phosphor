@@ -18,7 +18,7 @@ import websockets
 
 URL = "ws://127.0.0.1:8010/ws"
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
-PAD = 0.6
+PAD = 0.35
 
 
 def plain(frame: str) -> str:
