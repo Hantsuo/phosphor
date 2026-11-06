@@ -1,0 +1,11 @@
+services:
+  phosphor:
+    build: .
+    container_name: phosphor
+    restart: unless-stopped
+    ports:
+      - "80:8010"
+    volumes:
+      - /opt/phosphor/data:/data
+    environment:
+      PHOSPHOR_DB: /data/phosphor.db
