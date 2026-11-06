@@ -23,10 +23,10 @@ the digest at 3am.
 |---|---|
 | ANSI terminal core (80x24, CP437) | done |
 | Login, scrypt passwords, presence | done |
-| CRT browser client | done |
-| Boards + posting | next |
-| Sysop agent | planned |
-| Door game (`LAST CALL`) | planned |
+| CRT browser client + deep links | done |
+| Boards, posting, sysop digest | done |
+| Door game (`LAST CALL`) | next |
+| Sysop agent (model-backed) | planned |
 | Telnet bridge | planned |
 | Deployment | planned |
 

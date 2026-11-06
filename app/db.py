@@ -1,4 +1,4 @@
-"""
+﻿"""
 SQLite connection factory and schema bootstrap.
 """
 
@@ -19,6 +19,24 @@ CREATE TABLE IF NOT EXISTS users (
   last_call   TEXT NOT NULL,
   calls       INTEGER NOT NULL DEFAULT 1
 );
+
+CREATE TABLE IF NOT EXISTS boards (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  blurb      TEXT NOT NULL,
+  position   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS posts (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  board_id   TEXT NOT NULL REFERENCES boards(id),
+  handle     TEXT NOT NULL,
+  subject    TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_posts_board ON posts(board_id, id DESC);
 """
 
 def connect() -> sqlite3.Connection:
@@ -27,7 +45,7 @@ def connect() -> sqlite3.Connection:
     """
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    conn.execute(SCHEMA)
+    conn.executescript(SCHEMA)
     conn.commit()
     return conn
 

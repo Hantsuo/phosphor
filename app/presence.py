@@ -53,3 +53,9 @@ def get_online_handles() -> Set[str]:
     Get set of all online handles.
     """
     return set(_online.values())
+
+def get_callers() -> list[tuple[str, int]]:
+    """
+    Return (handle, node) for every online caller, in join order.
+    """
+    return [(handle, index + 1) for index, handle in enumerate(_online.values())]

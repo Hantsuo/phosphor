@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for user creation and password verification.
 """
 
@@ -13,7 +13,7 @@ def temp_db() -> sqlite3.Connection:
     # Use in-memory database
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    conn.execute(db.SCHEMA)
+    conn.executescript(db.SCHEMA)
     conn.commit()
     yield conn
     conn.close()

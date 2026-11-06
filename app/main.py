@@ -15,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from . import db
 from . import session as session_module
 from . import presence
+from . import boards
+from . import screens
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +55,19 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     # Create session
     session = session_module.Session(fast=fast)
     conn = db.connect()
+    boards.seed(conn)
     
     try:
         # Send initial boot frame, or land straight on the menu for guests
         if guest:
             first = session.login_guest(conn)
+            deep = websocket.query_params.get("board")
+            if deep:
+                target = boards.board(conn, deep)
+                if target:
+                    session.state = session_module.SessionState.BOARD_VIEW
+                    session.board_id = target["id"]
+                    first = screens.board_view(target, boards.recent(conn, target["id"]))
         else:
             first = session._render_boot()
         await websocket.send_text(json.dumps({

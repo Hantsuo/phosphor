@@ -25,6 +25,13 @@ class SessionState(Enum):
     CONFIRM_PASSWORD = "confirm_password"
     MENU = "menu"
     ABOUT = "about"
+    BOARD_LIST = "board_list"
+    BOARD_VIEW = "board_view"
+    POST_VIEW = "post_view"
+    COMPOSE_SUBJECT = "compose_subject"
+    COMPOSE_BODY = "compose_body"
+    WHO = "who"
+    DIGEST = "digest"
 
 class Session:
     """
@@ -51,6 +58,11 @@ class Session:
         self.login_password_input = ""
         self.login_attempts = 0
         self.pending_password = ""
+        self.board_id: Optional[str] = None
+        self.post_id: Optional[int] = None
+        self.draft_subject = ""
+        self.draft_lines: list[str] = []
+        self.read_buffer = ""
         self.last_activity = time.time()
         self.idle_timeout = 30 * 60  # 30 minutes
         
@@ -94,7 +106,21 @@ class Session:
         elif self.state == SessionState.CONFIRM_PASSWORD:
             return await self._handle_confirm_password(conn, key)
         elif self.state == SessionState.MENU:
-            return await self._handle_menu(key)
+            return await self._handle_menu(conn, key)
+        elif self.state == SessionState.WHO:
+            return await self._handle_who(key)
+        elif self.state == SessionState.DIGEST:
+            return await self._handle_digest(conn, key)
+        elif self.state == SessionState.BOARD_LIST:
+            return await self._handle_board_list(conn, key)
+        elif self.state == SessionState.BOARD_VIEW:
+            return await self._handle_board_view(conn, key)
+        elif self.state == SessionState.POST_VIEW:
+            return await self._handle_post_view(conn, key)
+        elif self.state == SessionState.COMPOSE_SUBJECT:
+            return await self._handle_compose_subject(conn, key)
+        elif self.state == SessionState.COMPOSE_BODY:
+            return await self._handle_compose_body(conn, key)
         elif self.state == SessionState.ABOUT:
             return await self._handle_about(key)
         
@@ -237,25 +263,205 @@ class Session:
         
         return screens.confirm_password(self.handle, "", self.login_password_input)
     
-    async def _handle_menu(self, key: str) -> str:
+    async def _handle_menu(self, conn: sqlite3.Connection, key: str) -> str:
         """Handle menu navigation."""
-        hint = ""
-        
-        if key.upper() == "Q":
-            # Quit - disconnect
+        from . import boards as boards_module
+        from . import sysop as sysop_module
+        from .presence import get_online_count, get_callers
+
+        upper = key.upper()
+
+        if upper == "Q":
             return "carrier lost"
-        elif key.upper() == "A":
+        if upper == "A":
             self.state = SessionState.ABOUT
             return screens.about()
-        elif key.upper() in ("B", "M", "F", "G", "W"):
-            # Other menu options - not implemented yet
-            hint = "NOT IMPLEMENTED YET"
+        if upper == "W":
+            self.state = SessionState.WHO
+            return screens.who(get_callers())
+        if upper == "S":
+            self.state = SessionState.DIGEST
+            return screens.digest(sysop_module.digest(conn))
+        if upper == "B":
+            self.state = SessionState.BOARD_LIST
+            return screens.board_list(boards_module.all_boards(conn))
+        if upper in ("M", "F", "G"):
+            hint = "NOT WIRED YET"
         else:
             hint = "UNKNOWN KEY"
-        
-        from .presence import get_online_count
+
         return screens.menu(self.handle, get_online_count(), hint)
-    
+
+    async def _handle_who(self, key: str) -> str:
+        """Handle the who's online screen."""
+        from .presence import get_callers, get_online_count
+
+        if key.upper() == "Q":
+            self.state = SessionState.MENU
+            return screens.menu(self.handle, get_online_count())
+        return screens.who(get_callers())
+
+    async def _handle_digest(self, conn: sqlite3.Connection, key: str) -> str:
+        """Handle the sysop digest screen."""
+        from . import sysop as sysop_module
+        from .presence import get_online_count
+
+        if key.upper() == "Q":
+            self.state = SessionState.MENU
+            return screens.menu(self.handle, get_online_count())
+        return screens.digest(sysop_module.digest(conn))
+
+    async def _handle_board_list(self, conn: sqlite3.Connection, key: str) -> str:
+        """Pick a board from the index."""
+        from . import boards as boards_module
+        from .presence import get_online_count
+
+        if key.upper() == "Q":
+            self.state = SessionState.MENU
+            return screens.menu(self.handle, get_online_count())
+
+        if key in "1234":
+            index = int(key) - 1
+            listed = boards_module.all_boards(conn)
+            if index < len(listed):
+                target = listed[index]
+                self.board_id = target["id"]
+                self.read_buffer = ""
+                self.state = SessionState.BOARD_VIEW
+                return screens.board_view(target, boards_module.recent(conn, target["id"]))
+
+        return screens.board_list(boards_module.all_boards(conn))
+
+    async def _handle_board_view(self, conn: sqlite3.Connection, key: str) -> str:
+        """Read, post, or leave a board."""
+        from . import boards as boards_module
+
+        target = boards_module.board(conn, self.board_id or "")
+        if target is None:
+            self.state = SessionState.BOARD_LIST
+            return screens.board_list(boards_module.all_boards(conn))
+
+        if key.upper() == "Q":
+            self.state = SessionState.BOARD_LIST
+            self.read_buffer = ""
+            return screens.board_list(boards_module.all_boards(conn))
+
+        if key.upper() == "P":
+            self.state = SessionState.COMPOSE_SUBJECT
+            self.draft_subject = ""
+            self.draft_lines = []
+            return screens.compose_subject(target)
+
+        if key == "\x7f":
+            self.read_buffer = self.read_buffer[:-1]
+        elif key == "\r":
+            if self.read_buffer:
+                posts = boards_module.recent(conn, target["id"])
+                index = int(self.read_buffer) - 1
+                if 0 <= index < len(posts):
+                    full = boards_module.post(conn, posts[index]["id"])
+                    if full:
+                        self.post_id = full["id"]
+                        self.state = SessionState.POST_VIEW
+                        return screens.post_view(full, target["name"])
+            self.read_buffer = ""
+        elif key.isdigit() and len(self.read_buffer) < 2:
+            self.read_buffer += key
+            if int(self.read_buffer) < 1:
+                self.read_buffer = ""
+        elif not key.isdigit() and key not in ("\r", "\x7f"):
+            self.read_buffer = ""
+
+        return screens.board_view(target, boards_module.recent(conn, target["id"]), self.read_buffer)
+
+    async def _handle_post_view(self, conn: sqlite3.Connection, key: str) -> str:
+        """Leave a post back to its board."""
+        from . import boards as boards_module
+
+        if key.upper() == "Q":
+            target = boards_module.board(conn, self.board_id or "")
+            self.state = SessionState.BOARD_VIEW
+            if target:
+                return screens.board_view(target, boards_module.recent(conn, target["id"]))
+            self.state = SessionState.BOARD_LIST
+            return screens.board_list(boards_module.all_boards(conn))
+        # Keep the same screen: a full redraw is cheaper than tracking dirty rows.
+        full = boards_module.post(conn, self.post_id or 0)
+        if full:
+            return screens.post_view(full, "")
+        self.state = SessionState.BOARD_LIST
+        return screens.board_list(boards_module.all_boards(conn))
+
+    async def _handle_compose_subject(self, conn: sqlite3.Connection, key: str) -> str:
+        """Collect the subject line."""
+        from . import boards as boards_module
+
+        target = boards_module.board(conn, self.board_id or "")
+        if target is None:
+            self.state = SessionState.BOARD_LIST
+            return screens.board_list(boards_module.all_boards(conn))
+
+        if key == "\x03":
+            self.state = SessionState.BOARD_VIEW
+            return screens.board_view(target, boards_module.recent(conn, target["id"]))
+
+        if key == "\r":
+            if self.draft_subject.strip():
+                self.state = SessionState.COMPOSE_BODY
+                return screens.compose_body(target, self.draft_subject, [])
+            return screens.compose_subject(target, self.draft_subject)
+
+        if key == "\x7f":
+            self.draft_subject = self.draft_subject[:-1]
+        elif len(key) == 1 and key.isprintable() and len(self.draft_subject) < 60:
+            self.draft_subject += key
+
+        return screens.compose_subject(target, self.draft_subject)
+
+    async def _handle_compose_body(self, conn: sqlite3.Connection, key: str) -> str:
+        """Collect body lines; a lone dot sends."""
+        from . import boards as boards_module
+        from .presence import get_online_count
+
+        target = boards_module.board(conn, self.board_id or "")
+        if target is None:
+            self.state = SessionState.BOARD_LIST
+            return screens.board_list(boards_module.all_boards(conn))
+
+        if key == "\x03":
+            self.state = SessionState.BOARD_VIEW
+            return screens.board_view(target, boards_module.recent(conn, target["id"]))
+
+        if key == "\r":
+            line = self.draft_lines[-1] if self.draft_lines else ""
+            if line.strip() == ".":
+                body = "\n".join(self.draft_lines[:-1])
+                try:
+                    boards_module.add(conn, target["id"], self.handle or "guest", self.draft_subject, body)
+                except ValueError:
+                    return screens.compose_body(target, self.draft_subject, self.draft_lines)
+                self.state = SessionState.BOARD_VIEW
+                self.draft_subject = ""
+                self.draft_lines = []
+                return screens.board_view(target, boards_module.recent(conn, target["id"]))
+            self.draft_lines.append("")
+            if len(self.draft_lines) > 20:
+                self.draft_lines = self.draft_lines[:20]
+            return screens.compose_body(target, self.draft_subject, self.draft_lines)
+
+        if key == "\x7f":
+            if self.draft_lines and self.draft_lines[-1]:
+                self.draft_lines[-1] = self.draft_lines[-1][:-1]
+            return screens.compose_body(target, self.draft_subject, self.draft_lines)
+
+        if len(key) == 1 and key.isprintable():
+            if not self.draft_lines:
+                self.draft_lines.append("")
+            if len(self.draft_lines[-1]) < 70:
+                self.draft_lines[-1] += key
+
+        return screens.compose_body(target, self.draft_subject, self.draft_lines)
+
     async def _handle_about(self, key: str) -> str:
         """Handle about screen."""
         if key.upper() == "Q":

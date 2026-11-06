@@ -24,6 +24,11 @@ class PhosphorClient {
                 this.toggleFastMode();
                 return;
             }
+            if (event.ctrlKey && (event.key === "c" || event.key === "C")) {
+                event.preventDefault();
+                this.sendKey("\x03");
+                return;
+            }
             if (event.ctrlKey || event.metaKey || event.altKey) return;
 
             let key = null;
@@ -45,6 +50,8 @@ class PhosphorClient {
         const params = new URLSearchParams();
         if (this.fastMode) params.set("fast", "1");
         if (new URLSearchParams(window.location.search).get("guest") === "1") params.set("guest", "1");
+        const deepBoard = new URLSearchParams(window.location.search).get("board");
+        if (deepBoard) params.set("board", deepBoard);
         if ([...params].length) url += `?${params.toString()}`;
 
         this.status("CONNECTING");

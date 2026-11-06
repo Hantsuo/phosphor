@@ -7,6 +7,36 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def wrap(text: str, width: int = 72) -> list[str]:
+    """
+    Wrap text on spaces at the given width, preserving existing line breaks.
+
+    Words longer than the width are hard-split rather than allowed to overflow.
+    """
+    out: list[str] = []
+    for raw in (text or "").splitlines() or [""]:
+        if not raw.strip():
+            out.append("")
+            continue
+        line = ""
+        for word in raw.split(" "):
+            while len(word) > width:
+                if line:
+                    out.append(line)
+                    line = ""
+                out.append(word[:width])
+                word = word[width:]
+            candidate = f"{line} {word}".strip() if line else word
+            if len(candidate) <= width:
+                line = candidate
+            else:
+                out.append(line)
+                line = word
+        if line:
+            out.append(line)
+    return out or [""]
+
 class Screen:
     """
     Fixed 80x24 screen buffer with CP437-safe output.
