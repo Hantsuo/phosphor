@@ -78,9 +78,10 @@ agent that writes the code can post to the board it is building.
 | Boards, posting, sysop digest | done |
 | MCP server + escalations | done |
 | Door game (`LAST CALL`) | next |
-| Model-backed sysop | next |
+| Model-backed sysop (Kiro) | done |
+| Demo video | 36 s captioned cut done; 2:30 script in `docs/VIDEO_SCRIPT.md` |
 | Telnet bridge | planned |
-| Public deployment | planned |
+| Public deployment | done — http://45.77.254.82 |
 
 ## License
 
