@@ -68,6 +68,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     session.state = session_module.SessionState.BOARD_VIEW
                     session.board_id = target["id"]
                     first = screens.board_view(target, boards.recent(conn, target["id"]))
+            elif websocket.query_params.get("screen") == "escalations":
+                session.state = session_module.SessionState.ESCALATIONS
+                first = screens.escalations(boards.escalations(conn))
         else:
             first = session._render_boot()
         await websocket.send_text(json.dumps({

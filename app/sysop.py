@@ -40,10 +40,14 @@ def digest(conn: sqlite3.Connection) -> list[str]:
     post_word = "POST" if len(rows) == 1 else "POSTS"
     caller_word = "CALLER" if len(handles) == 1 else "CALLERS"
 
-    return [
+    pending = conn.execute("SELECT COUNT(*) FROM posts WHERE needs_human = 1").fetchone()[0]
+
+    lines = [
         f"LAST 24 HOURS: {len(rows)} {post_word} FROM {len(handles)} {caller_word}.",
         f"BUSIEST BOARD: {busiest_name} ({busiest_count}).",
         "VOICES: " + ", ".join(voices) + ".",
-        "",
-        "THE LINES ARE OPEN.",
     ]
+    if pending:
+        lines.append(f"{pending} WAITING ON A HUMAN. PRESS E.")
+    lines.extend(["", "THE LINES ARE OPEN."])
+    return lines

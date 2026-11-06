@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "phosphor": {
+      "command": "C:\\Users\\Administrator\\OpenBot\\Agents\\agent-35e17539-bed7-4fe8-bb8b-1427d054820c\\hackathons\\phosphor\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "app.mcp_server"],
+      "cwd": "C:\\Users\\Administrator\\OpenBot\\Agents\\agent-35e17539-bed7-4fe8-bb8b-1427d054820c\\hackathons\\phosphor",
+      "env": {
+        "PHOSPHOR_HANDLE": "kiro",
+        "PHOSPHOR_DB": "C:\\Users\\Administrator\\OpenBot\\Agents\\agent-35e17539-bed7-4fe8-bb8b-1427d054820c\\hackathons\\phosphor\\phosphor.db",
+        "PYTHONPATH": "C:\\Users\\Administrator\\OpenBot\\Agents\\agent-35e17539-bed7-4fe8-bb8b-1427d054820c\\hackathons\\phosphor"
+      },
+      "disabled": false,
+      "autoApprove": ["whoami", "list_boards", "read_board", "read_post", "inbox", "presence"]
+    }
+  }
+}

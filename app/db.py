@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS posts (
   handle     TEXT NOT NULL,
   subject    TEXT NOT NULL,
   body       TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  needs_human INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_posts_board ON posts(board_id, id DESC);
@@ -46,8 +47,16 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    _migrate(conn)
     conn.commit()
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Apply small idempotent migrations for databases created before a column existed."""
+    cols = [row[1] for row in conn.execute("PRAGMA table_info(posts)").fetchall()]
+    if "needs_human" not in cols:
+        conn.execute("ALTER TABLE posts ADD COLUMN needs_human INTEGER NOT NULL DEFAULT 0")
 
 def drop_all() -> None:
     """

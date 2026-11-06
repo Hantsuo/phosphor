@@ -52,6 +52,8 @@ class PhosphorClient {
         if (new URLSearchParams(window.location.search).get("guest") === "1") params.set("guest", "1");
         const deepBoard = new URLSearchParams(window.location.search).get("board");
         if (deepBoard) params.set("board", deepBoard);
+        const deepScreen = new URLSearchParams(window.location.search).get("screen");
+        if (deepScreen) params.set("screen", deepScreen);
         if ([...params].length) url += `?${params.toString()}`;
 
         this.status("CONNECTING");

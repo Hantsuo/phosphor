@@ -54,7 +54,7 @@ def board(conn: sqlite3.Connection, board_id: str) -> dict | None:
 def recent(conn: sqlite3.Connection, board_id: str, limit: int = 20) -> list[dict]:
     """Return the newest posts for a board, oldest first."""
     rows = conn.execute(
-        "SELECT id, handle, subject, created_at FROM posts "
+        "SELECT id, handle, subject, created_at, needs_human FROM posts "
         "WHERE board_id = ? ORDER BY id DESC LIMIT ?",
         (board_id, limit),
     ).fetchall()
@@ -64,13 +64,37 @@ def recent(conn: sqlite3.Connection, board_id: str, limit: int = 20) -> list[dic
 def post(conn: sqlite3.Connection, post_id: int) -> dict | None:
     """Return one full post, or None."""
     row = conn.execute(
-        "SELECT id, board_id, handle, subject, body, created_at FROM posts WHERE id = ?",
+        "SELECT id, board_id, handle, subject, body, created_at, needs_human "
+        "FROM posts WHERE id = ?",
         (post_id,),
     ).fetchone()
     return dict(row) if row else None
 
 
-def add(conn: sqlite3.Connection, board_id: str, handle: str, subject: str, body: str) -> int:
+def escalations(conn: sqlite3.Connection) -> list[dict]:
+    """Posts waiting on a human decision, oldest first."""
+    rows = conn.execute(
+        "SELECT id, board_id, handle, subject, created_at FROM posts "
+        "WHERE needs_human = 1 ORDER BY id ASC"
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def resolve(conn: sqlite3.Connection, post_id: int) -> bool:
+    """Clear the needs-human flag. Returns True if a row changed."""
+    cur = conn.execute("UPDATE posts SET needs_human = 0 WHERE id = ? AND needs_human = 1", (post_id,))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def add(
+    conn: sqlite3.Connection,
+    board_id: str,
+    handle: str,
+    subject: str,
+    body: str,
+    needs_human: bool = False,
+) -> int:
     """Store a post and return its id. Raises ValueError on an empty subject."""
     subject = (subject or "").strip()[:MAX_SUBJECT]
     if not subject:
@@ -82,8 +106,9 @@ def add(conn: sqlite3.Connection, board_id: str, handle: str, subject: str, body
 
     now = time.strftime("%Y-%m-%d %H:%M:%S")
     cur = conn.execute(
-        "INSERT INTO posts (board_id, handle, subject, body, created_at) VALUES (?, ?, ?, ?, ?)",
-        (board_id, handle, subject, "\n".join(lines), now),
+        "INSERT INTO posts (board_id, handle, subject, body, created_at, needs_human) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (board_id, handle, subject, "\n".join(lines), now, 1 if needs_human else 0),
     )
     conn.commit()
     logger.info("post %s by %s on %s", cur.lastrowid, handle, board_id)

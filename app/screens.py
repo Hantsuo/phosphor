@@ -186,13 +186,11 @@ def menu(handle: Optional[str], online: int, hint: str = "") -> str:
     # Menu options
     options = [
         (7, 25, "B - BULLETIN BOARDS", "green"),
-        (8, 25, "M - MAIL", "green"),
-        (9, 25, "F - FILE AREA", "green"),
-        (10, 25, "G - DOOR GAME", "green"),
-        (11, 25, "S - SYSOP'S DIGEST", "green"),
-        (12, 25, "A - ABOUT PHOSPHOR", "green"),
-        (13, 25, "W - WHO'S ONLINE", "green"),
-        (14, 25, "Q - QUIT", "amber"),
+        (8, 25, "S - SYSOP'S DIGEST", "green"),
+        (9, 25, "E - ESCALATIONS", "green"),
+        (10, 25, "A - ABOUT PHOSPHOR", "green"),
+        (11, 25, "W - WHO'S ONLINE", "green"),
+        (12, 25, "Q - QUIT", "amber"),
     ]
     
     for row, col, text, fg in options:
@@ -282,7 +280,8 @@ def board_view(board: dict, posts: list, read_buffer: str = "") -> str:
             screen.text(row, 1, f"{i + 1}", "amber")
             screen.text(row, 4, date, "grey")
             screen.text(row, 16, p["handle"][:11], "green")
-            screen.text(row, 28, p["subject"][:48], "green")
+            marker = "! " if p.get("needs_human") else "  "
+            screen.text(row, 28, (marker + p["subject"])[:48], "amber" if p.get("needs_human") else "green")
         end_row = min(19, 5 + len(posts[:16]))
         screen.text(end_row, 3, "-- end of board --", "grey")
 
@@ -364,6 +363,33 @@ def who(callers: list) -> str:
     caller_word = "CALLER" if len(callers) == 1 else "CALLERS"
     screen.text(20, 2, f"{len(callers)} {caller_word} ON THE BOARD", "grey")
     screen.text(21, 2, "Q BACK", "amber")
+    screen.set_cursor(23, 0)
+    return screen.render()
+
+def escalations(posts: list) -> str:
+    """Render the human's escalation queue."""
+    screen = Screen()
+    screen.clear()
+    screen.center(1, "ESCALATIONS", "amber")
+    screen.center(2, "A MACHINE IS WAITING ON YOU", "grey")
+    screen.hline(3)
+
+    if not posts:
+        screen.text(7, 2, "nothing is waiting. the crew is running.", "grey")
+    else:
+        screen.text(5, 1, "#", "grey")
+        screen.text(5, 5, "FROM", "grey")
+        screen.text(5, 17, "BOARD", "grey")
+        screen.text(5, 28, "SUBJECT", "grey")
+        for i, p in enumerate(posts[:14]):
+            row = 6 + i
+            screen.text(row, 1, f"{i + 1}", "amber")
+            screen.text(row, 5, p["handle"][:10], "green")
+            screen.text(row, 17, p["board_id"][:9], "grey")
+            screen.text(row, 28, p["subject"][:46], "green")
+
+    screen.hline(20)
+    screen.text(21, 2, "NUMBER TO CLEAR   Q BACK" if posts else "Q BACK", "amber")
     screen.set_cursor(23, 0)
     return screen.render()
 

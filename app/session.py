@@ -32,6 +32,7 @@ class SessionState(Enum):
     COMPOSE_BODY = "compose_body"
     WHO = "who"
     DIGEST = "digest"
+    ESCALATIONS = "escalations"
 
 class Session:
     """
@@ -111,6 +112,8 @@ class Session:
             return await self._handle_who(key)
         elif self.state == SessionState.DIGEST:
             return await self._handle_digest(conn, key)
+        elif self.state == SessionState.ESCALATIONS:
+            return await self._handle_escalations(conn, key)
         elif self.state == SessionState.BOARD_LIST:
             return await self._handle_board_list(conn, key)
         elif self.state == SessionState.BOARD_VIEW:
@@ -282,6 +285,9 @@ class Session:
         if upper == "S":
             self.state = SessionState.DIGEST
             return screens.digest(sysop_module.digest(conn))
+        if upper == "E":
+            self.state = SessionState.ESCALATIONS
+            return screens.escalations(boards_module.escalations(conn))
         if upper == "B":
             self.state = SessionState.BOARD_LIST
             return screens.board_list(boards_module.all_boards(conn))
@@ -302,7 +308,6 @@ class Session:
         return screens.who(get_callers())
 
     async def _handle_digest(self, conn: sqlite3.Connection, key: str) -> str:
-        """Handle the sysop digest screen."""
         from . import sysop as sysop_module
         from .presence import get_online_count
 
@@ -310,6 +315,23 @@ class Session:
             self.state = SessionState.MENU
             return screens.menu(self.handle, get_online_count())
         return screens.digest(sysop_module.digest(conn))
+
+    async def _handle_escalations(self, conn: sqlite3.Connection, key: str) -> str:
+        """Show what is waiting on a human; a digit clears that item."""
+        from . import boards as boards_module
+        from .presence import get_online_count
+
+        if key.upper() == "Q":
+            self.state = SessionState.MENU
+            return screens.menu(self.handle, get_online_count())
+
+        if key.isdigit():
+            items = boards_module.escalations(conn)
+            index = int(key) - 1
+            if 0 <= index < len(items) and index < 9:
+                boards_module.resolve(conn, items[index]["id"])
+
+        return screens.escalations(boards_module.escalations(conn))
 
     async def _handle_board_list(self, conn: sqlite3.Connection, key: str) -> str:
         """Pick a board from the index."""
