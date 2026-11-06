@@ -71,6 +71,13 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             elif websocket.query_params.get("screen") == "escalations":
                 session.state = session_module.SessionState.ESCALATIONS
                 first = screens.escalations(boards.escalations(conn))
+            elif websocket.query_params.get("screen") == "game":
+                from . import game as game_module
+
+                session.game_state = game_module.new_state()
+                session.game_lines = game_module.look(session.game_state)
+                session.state = session_module.SessionState.GAME
+                first = screens.game(session.game_state, session.game_lines)
         else:
             first = session._render_boot()
         await websocket.send_text(json.dumps({

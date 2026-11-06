@@ -33,6 +33,7 @@ class SessionState(Enum):
     WHO = "who"
     DIGEST = "digest"
     ESCALATIONS = "escalations"
+    GAME = "game"
 
 class Session:
     """
@@ -64,6 +65,10 @@ class Session:
         self.draft_subject = ""
         self.draft_lines: list[str] = []
         self.read_buffer = ""
+        self.game_state = None
+        self.game_lines: list[str] = []
+        self.game_input = ""
+        self.game_finished = False
         self.last_activity = time.time()
         self.idle_timeout = 30 * 60  # 30 minutes
         
@@ -114,6 +119,8 @@ class Session:
             return await self._handle_digest(conn, key)
         elif self.state == SessionState.ESCALATIONS:
             return await self._handle_escalations(conn, key)
+        elif self.state == SessionState.GAME:
+            return await self._handle_game(key)
         elif self.state == SessionState.BOARD_LIST:
             return await self._handle_board_list(conn, key)
         elif self.state == SessionState.BOARD_VIEW:
@@ -291,7 +298,16 @@ class Session:
         if upper == "B":
             self.state = SessionState.BOARD_LIST
             return screens.board_list(boards_module.all_boards(conn))
-        if upper in ("M", "F", "G"):
+        if upper == "G":
+            from . import game as game_module
+
+            self.game_state = game_module.new_state()
+            self.game_lines = game_module.look(self.game_state)
+            self.game_input = ""
+            self.game_finished = False
+            self.state = SessionState.GAME
+            return screens.game(self.game_state, self.game_lines)
+        if upper in ("M", "F"):
             hint = "NOT WIRED YET"
         else:
             hint = "UNKNOWN KEY"
@@ -317,7 +333,6 @@ class Session:
         return screens.digest(sysop_module.digest(conn))
 
     async def _handle_escalations(self, conn: sqlite3.Connection, key: str) -> str:
-        """Show what is waiting on a human; a digit clears that item."""
         from . import boards as boards_module
         from .presence import get_online_count
 
@@ -332,6 +347,39 @@ class Session:
                 boards_module.resolve(conn, items[index]["id"])
 
         return screens.escalations(boards_module.escalations(conn))
+
+    async def _handle_game(self, key: str) -> str:
+        """Type into LAST CALL; the game owns the rest."""
+        from . import game as game_module
+        from .presence import get_online_count
+
+        if self.game_state is None:
+            self.game_state = game_module.new_state()
+            self.game_lines = game_module.look(self.game_state)
+
+        if self.game_finished:
+            self.state = SessionState.MENU
+            self.game_state = None
+            return screens.menu(self.handle, get_online_count())
+
+        if key == "\x03":
+            self.state = SessionState.MENU
+            self.game_state = None
+            return screens.menu(self.handle, get_online_count())
+
+        if key == "\r":
+            state, lines, playing = game_module.command(self.game_state, self.game_input)
+            self.game_state = state
+            self.game_lines = lines
+            self.game_input = ""
+            if not playing:
+                self.game_finished = True
+        elif key == "\x7f":
+            self.game_input = self.game_input[:-1]
+        elif len(key) == 1 and key.isprintable() and len(self.game_input) < 40:
+            self.game_input += key
+
+        return screens.game(self.game_state, self.game_lines, self.game_input, self.game_finished)
 
     async def _handle_board_list(self, conn: sqlite3.Connection, key: str) -> str:
         """Pick a board from the index."""

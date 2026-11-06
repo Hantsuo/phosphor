@@ -9,3 +9,16 @@ services:
       - /opt/phosphor/data:/data
     environment:
       PHOSPHOR_DB: /data/phosphor.db
+
+  telnet:
+    build: .
+    container_name: phosphor-telnet
+    restart: unless-stopped
+    command: ["python", "-m", "app.telnet"]
+    ports:
+      - "23:8023"
+    volumes:
+      - /opt/phosphor/data:/data
+    environment:
+      PHOSPHOR_DB: /data/phosphor.db
+      PHOSPHOR_FAST: "0"

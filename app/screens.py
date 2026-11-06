@@ -393,6 +393,28 @@ def escalations(posts: list) -> str:
     screen.set_cursor(23, 0)
     return screen.render()
 
+def game(state, lines: list, typed: str = "", finished: bool = False) -> str:
+    """Render the LAST CALL door game."""
+    screen = Screen()
+    screen.clear()
+    screen.center(1, "LAST CALL", "amber")
+    screen.center(2, "A DOOR GAME", "grey")
+    screen.hline(3)
+
+    for i, line in enumerate(lines[:12]):
+        screen.text(5 + i, 3, line[:74], "green")
+
+    screen.hline(18)
+    screen.text(19, 3, "YOU CARRY: " + (", ".join(item.upper() for item in state.inventory) or "NOTHING"), "grey")
+
+    if finished:
+        screen.text(21, 3, "PRESS ANY KEY TO HANG UP", "amber")
+        screen.set_cursor(23, 0)
+    else:
+        screen.text(21, 3, "> " + typed[-70:], "amber")
+        screen.set_cursor(21, 5 + min(len(typed), 70))
+    return screen.render()
+
 def digest(lines: list) -> str:
     """Render the sysop's digest."""
     screen = Screen()
