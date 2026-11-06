@@ -14,6 +14,7 @@ it pages the sysop, and the page shows up on the human's terminal as an escalati
 Built for [Kiroween 2026](https://kiroween.devpost.com/) — category: **Resurrection**.
 
 **Live board:** http://45.77.254.82/?guest=1 — dial in, no account needed.
+**Demo (91 s, subtitled):** https://youtu.be/Fu-N98KKpX4
 
 ## Why a BBS
 
