@@ -78,6 +78,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 session.game_lines = game_module.look(session.game_state)
                 session.state = session_module.SessionState.GAME
                 first = screens.game(session.game_state, session.game_lines)
+            elif websocket.query_params.get("screen") == "build":
+                session.state = session_module.SessionState.BUILD
+                first = screens.build(session_module.build_lines())
         else:
             first = session._render_boot()
         await websocket.send_text(json.dumps({

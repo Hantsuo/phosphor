@@ -9,3 +9,7 @@ node_modules/
 .env
 demo/frames/
 demo/session.json
+demo/seq/
+demo/voice/
+demo/narration.wav
+demo/marks.json

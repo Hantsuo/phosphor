@@ -16,6 +16,30 @@ from .terminal import Screen
 
 logger = logging.getLogger(__name__)
 
+
+def build_lines() -> list[str]:
+    """The .kiro tree, as the board shows it."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent / ".kiro"
+    if not root.exists():
+        return [".kiro/ not found"]
+
+    lines = [".kiro/"]
+
+    def walk(directory: Path, depth: int) -> None:
+        for child in sorted(directory.iterdir(), key=lambda p: (p.is_file(), p.name)):
+            if child.is_dir() and child.parent.name == "specs":
+                count = len(list(child.glob("*.md")))
+                lines.append("  " * depth + f"{child.name}/  ({count} files)")
+                continue
+            lines.append("  " * depth + child.name + ("/" if child.is_dir() else ""))
+            if child.is_dir():
+                walk(child, depth + 1)
+
+    walk(root, 1)
+    return lines
+
 class SessionState(Enum):
     """Session state machine states."""
     BOOT = "boot"
@@ -34,6 +58,7 @@ class SessionState(Enum):
     DIGEST = "digest"
     ESCALATIONS = "escalations"
     GAME = "game"
+    BUILD = "build"
 
 class Session:
     """
@@ -121,6 +146,8 @@ class Session:
             return await self._handle_escalations(conn, key)
         elif self.state == SessionState.GAME:
             return await self._handle_game(key)
+        elif self.state == SessionState.BUILD:
+            return await self._handle_build(key)
         elif self.state == SessionState.BOARD_LIST:
             return await self._handle_board_list(conn, key)
         elif self.state == SessionState.BOARD_VIEW:
@@ -295,6 +322,9 @@ class Session:
         if upper == "E":
             self.state = SessionState.ESCALATIONS
             return screens.escalations(boards_module.escalations(conn))
+        if upper == "V":
+            self.state = SessionState.BUILD
+            return screens.build(build_lines())
         if upper == "B":
             self.state = SessionState.BOARD_LIST
             return screens.board_list(boards_module.all_boards(conn))
@@ -347,6 +377,15 @@ class Session:
                 boards_module.resolve(conn, items[index]["id"])
 
         return screens.escalations(boards_module.escalations(conn))
+
+    async def _handle_build(self, key: str) -> str:
+        """Show the .kiro tree; any key goes back."""
+        from .presence import get_online_count
+
+        if key.upper() == "Q" or key == "\r":
+            self.state = SessionState.MENU
+            return screens.menu(self.handle, get_online_count())
+        return screens.build(build_lines())
 
     async def _handle_game(self, key: str) -> str:
         """Type into LAST CALL; the game owns the rest."""

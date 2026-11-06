@@ -190,7 +190,8 @@ def menu(handle: Optional[str], online: int, hint: str = "") -> str:
         (9, 25, "E - ESCALATIONS", "green"),
         (10, 25, "A - ABOUT PHOSPHOR", "green"),
         (11, 25, "W - WHO'S ONLINE", "green"),
-        (12, 25, "Q - QUIT", "amber"),
+        (12, 25, "V - THE BUILD", "green"),
+        (13, 25, "Q - QUIT", "amber"),
     ]
     
     for row, col, text, fg in options:
@@ -390,6 +391,23 @@ def escalations(posts: list) -> str:
 
     screen.hline(20)
     screen.text(21, 2, "NUMBER TO CLEAR   Q BACK" if posts else "Q BACK", "amber")
+    screen.set_cursor(23, 0)
+    return screen.render()
+
+def build(files: list) -> str:
+    """Render the .kiro tree, so the build is visible inside the product."""
+    screen = Screen()
+    screen.clear()
+    screen.center(1, "THE BUILD", "amber")
+    screen.center(2, "WHAT KIRO WROTE, AND WHAT IT READ", "grey")
+    screen.hline(3)
+
+    for i, line in enumerate(files[:15]):
+        colour = "amber" if line.endswith("/") else "green"
+        screen.text(5 + i, 3, line[:74], colour)
+
+    screen.hline(20)
+    screen.text(21, 3, "Q BACK", "amber")
     screen.set_cursor(23, 0)
     return screen.render()
 

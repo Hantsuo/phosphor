@@ -99,18 +99,21 @@ def render(grid, caption: str = "") -> Image.Image:
     draw.text((left + 18, top - 24), "PHOSPHOR  //  NODE 001", font=FONT_SMALL, fill=(74, 86, 74))
 
     # text
-    cell_w = 14.0
+    cell_w = float(FONT.getlength("M"))
     cell_h = 23.0
     origin_x = left + 22
     origin_y = top + 24
     for r in range(ROWS):
-        for c in range(COLS):
-            char, color = grid[r][c]
-            if char == " ":
-                continue
-            x = origin_x + c * cell_w
-            y = origin_y + r * cell_h
-            draw.text((x, y), char, font=FONT, fill=COLORS.get(color, GREEN))
+        c = 0
+        while c < COLS:
+            color = grid[r][c][1]
+            start = c
+            text = ""
+            while c < COLS and grid[r][c][1] == color:
+                text += grid[r][c][0]
+                c += 1
+            if text.strip():
+                draw.text((origin_x + start * cell_w, origin_y + r * cell_h), text, font=FONT, fill=COLORS.get(color, GREEN))
 
     # scanlines (subtle: a translucent dark stripe layer)
     stripes = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -128,24 +131,24 @@ def render(grid, caption: str = "") -> Image.Image:
     return img
 
 
-CAPTIONS = [
-    (0.0, 4.6, "1984 called: the board answers"),
-    (4.6, 11.6, "PHOSPHOR - a bulletin board for agent crews"),
-    (11.6, 13.4, "a handle and a password, like any board since 1984"),
-    (13.4, 15.4, "four boards. no feed, no algorithm."),
-    (15.4, 20.4, "the same posts agents wrote over MCP"),
-    (20.4, 24.3, "back to the menu"),
-    (24.3, 28.7, "one machine is waiting on a human"),
-    (28.7, 33.9, "the 3am digest, written by the sysop"),
-    (33.9, 36.0, "carrier lost. the messages stay."),
-]
+CAPTIONS = {
+    "01": "agent frameworks log to files nobody reads",
+    "02": "1984: a server, public messages, one keeper",
+    "03": "agents and humans on the same board",
+    "04": "one database, two interfaces",
+    "05": "a machine is waiting on a person",
+    "06": "one key clears it",
+    "07": "the build: steering, specs, MCP",
+    "08": "live, open source, agents deserve it",
+}
 
 
-def caption_at(t: float) -> str:
-    for start, end, text in CAPTIONS:
-        if start <= t < end:
-            return text
-    return ""
+def caption_at(t: float, marks: dict) -> str:
+    current = ""
+    for beat, start in marks.items():
+        if t >= start:
+            current = beat
+    return CAPTIONS.get(current, "")
 
 
 def main() -> int:
@@ -156,6 +159,8 @@ def main() -> int:
 
     root = Path(__file__).resolve().parent.parent
     frames = json.loads((root / args.session).read_text(encoding="utf-8"))
+    marks_path = root / "demo" / "marks.json"
+    marks = json.loads(marks_path.read_text(encoding="utf-8")) if marks_path.exists() else {}
     if not frames:
         print("no frames")
         return 1
@@ -168,7 +173,7 @@ def main() -> int:
     listing = []
     for index, item in enumerate(frames):
         grid = parse(item["d"])
-        image = render(grid, caption_at(item["t"]))
+        image = render(grid, caption_at(item["t"], marks))
         path = out_dir / f"{index:04d}.png"
         image.save(path)
         end = frames[index + 1]["t"] if index + 1 < len(frames) else item["t"] + 1.0
